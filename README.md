@@ -17,7 +17,7 @@ pip install delembic
 delembic init
 
 # 2. Edit delembic.ini — set your database URL
-#    sqlalchemy.url = postgresql+psycopg://user:pass@host/dbname
+# sqlalchemy.url = postgresql+psycopg://user:pass@host/dbname
 
 # 3. Create a migration
 delembic revision -m "load vocabulary"

@@ -1,0 +1,32 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+.eggs/
+
+# Build
+dist/
+build/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+*.db
+
+# Type checkers / linters
+.mypy_cache/
+.ruff_cache/
+
+# Env
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
+*.swp
