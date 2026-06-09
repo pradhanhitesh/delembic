@@ -32,33 +32,26 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Get latest tag
-        id: get_tag
-        run: |
-          git fetch --tags
-          latest_tag=$(git describe --tags --abbrev=0 || echo "v0.0.0")
-          echo "latest_tag=$latest_tag" >> $GITHUB_ENV
+      - name: Fetch tags
+        run: git fetch --tags
 
       - name: Determine bump type
         id: bump_type
         run: |
-          if [[ "${{ github.event.head_commit.message }}" == *"bump: major"* ]]; then
-            echo "bump_type=major" >> $GITHUB_ENV
-          elif [[ "${{ github.event.head_commit.message }}" == *"bump: minor"* ]]; then
-            echo "bump_type=minor" >> $GITHUB_ENV
-          elif [[ "${{ github.event.head_commit.message }}" == *"bump: patch"* ]]; then
-            echo "bump_type=patch" >> $GITHUB_ENV
+          msg="${{ github.event.head_commit.message }}"
+          if [[ "$msg" == *"bump: major"* ]]; then
+            echo "value=major" >> $GITHUB_OUTPUT
+          elif [[ "$msg" == *"bump: minor"* ]]; then
+            echo "value=minor" >> $GITHUB_OUTPUT
+          elif [[ "$msg" == *"bump: patch"* ]]; then
+            echo "value=patch" >> $GITHUB_OUTPUT
           else
             echo "ERROR: Commit must include 'bump: patch|minor|major'"
             exit 1
           fi
 
       - name: Bump version
-        run: |
-          bump2version --current-version ${latest_tag#v} $bump_type --tag --commit --allow-dirty
-        env:
-          bump_type: ${{ env.bump_type }}
-          latest_tag: ${{ env.latest_tag }}
+        run: bump2version ${{ steps.bump_type.outputs.value }}
 
       - name: Push new version and tag
         run: |
