@@ -22,6 +22,12 @@ delembic = "delembic.cli:cli"
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
+docs = [
+    "sphinx>=7.0",
+    "furo>=2024.0",
+    "myst-parser>=3.0",
+    "sphinx-copybutton>=0.5",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/delembic"]
