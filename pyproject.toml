@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "delembic"
-version = "0.1.1"
+version = "0.2.0"
 description = "Data migration framework for versioning ETL and data operations alongside Alembic"
 readme = "README.md"
 requires-python = ">=3.11"
