@@ -12,6 +12,10 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    if: |
+      contains(github.event.head_commit.message, 'bump: patch') ||
+      contains(github.event.head_commit.message, 'bump: minor') ||
+      contains(github.event.head_commit.message, 'bump: major')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -62,7 +66,7 @@ jobs:
         id: new_tag
         run: |
           new_tag=$(git describe --tags `git rev-list --tags --max-count=1`)
-          echo "new_tag=$new_tag" >> $GITHUB_ENV
+          echo "value=$new_tag" >> $GITHUB_OUTPUT
 
       - name: Build package
         run: python -m build
@@ -73,10 +77,10 @@ jobs:
       - name: Upload release assets
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ env.new_tag }}
-          name: "Delembic ${{ env.new_tag }}"
+          tag_name: ${{ steps.new_tag.outputs.value }}
+          name: "Delembic ${{ steps.new_tag.outputs.value }}"
           body: |
-            Release ${{ env.new_tag }}
+            Release ${{ steps.new_tag.outputs.value }}
 
             Changes in this release:
             - Auto-bumped version via GitHub Actions
