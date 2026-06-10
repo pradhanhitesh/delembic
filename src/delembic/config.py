@@ -8,10 +8,15 @@ import sqlalchemy as sa
 class Config:
     def __init__(self, ini_path: Path):
         self.ini_path = ini_path.resolve()
-        cp = configparser.ConfigParser()
+        cp = configparser.RawConfigParser()
         cp.read(self.ini_path)
         self.script_location = Path(cp.get("delembic", "script_location", fallback="delembic"))
         self.url = cp.get("delembic", "sqlalchemy.url", fallback="")
+        self.filename_template: str = cp.get(
+            "delembic",
+            "filename_template",
+            fallback="%(year)s_%(month)s_%(day)s_%(hour)s%(minute)s%(second)s_%(revision)s_%(slug)s",
+        )
         _alembic_raw = cp.get("delembic", "alembic_config", fallback="")
         self.alembic_config: Path | None = (
             (self.ini_path.parent / _alembic_raw) if _alembic_raw else None

@@ -1,4 +1,6 @@
 import re
+import uuid
+from datetime import datetime
 from pathlib import Path
 
 import click
@@ -71,9 +73,19 @@ def revision(message: str) -> None:
         except Exception as e:
             click.echo(f"Warning: could not connect to DB for Alembic heads: {e}", err=True)
 
-    next_id = _next_revision_id(cfg.versions_dir)
+    next_id = uuid.uuid4().hex[:12]
     slug = re.sub(r"[^a-z0-9]+", "_", message.lower()).strip("_")
-    filename = f"{next_id}_{slug}.py"
+    now = datetime.now()
+    filename = (cfg.filename_template % {
+        "revision": next_id,
+        "slug": slug,
+        "year": now.strftime("%Y"),
+        "month": now.strftime("%m"),
+        "day": now.strftime("%d"),
+        "hour": now.strftime("%H"),
+        "minute": now.strftime("%M"),
+        "second": now.strftime("%S"),
+    }) + ".py"
     class_name = "".join(word.title() for word in slug.split("_"))
     content = _render(
         "migration.mako",
@@ -160,11 +172,3 @@ def history() -> None:
         click.echo(f"{status}  {rev}  {cls.description}")
 
 
-def _next_revision_id(versions_dir: Path) -> str:
-    existing = list(versions_dir.glob("D*.py"))
-    max_n = 0
-    for p in existing:
-        m = re.match(r"D(\d+)", p.stem)
-        if m:
-            max_n = max(max_n, int(m.group(1)))
-    return f"D{max_n + 1:03d}"
