@@ -40,6 +40,8 @@ class LoadVocabulary(DataMigration):
 
 **Required.** Receives an open SQLAlchemy `Connection`. Do your data work here.
 
+**Standard SQL:**
+
 ```python
 def upgrade(self, conn):
     conn.execute(
@@ -50,9 +52,26 @@ def upgrade(self, conn):
     )
 ```
 
+**Bulk COPY via psycopg3** (for large datasets):
+
+```python
+def upgrade(self, conn):
+    raw = conn.connection.driver_connection   # raw psycopg3 Connection
+    with raw.cursor() as cur:
+        with open("data.csv") as f:
+            with cur.copy("COPY my_table FROM STDIN WITH (FORMAT csv)") as copy:
+                while data := f.read(1024 * 1024):
+                    copy.write(data)
+    raw.commit()   # COPY bypasses SQLAlchemy's transaction — commit explicitly
+```
+
 The connection is managed by Delembic:
-- Auto-committed on success
+- Auto-committed on success (standard SQL path)
 - Rolled back on any exception (including `validate` failure)
+
+```{note}
+When using `conn.connection.driver_connection` for raw psycopg3 COPY, you must call `raw.commit()` manually — the raw connection bypasses SQLAlchemy's transaction management. Make `upgrade()` idempotent (e.g. truncate before inserting) so retries are safe.
+```
 
 ### `validate(self, conn)`
 

@@ -8,13 +8,17 @@ Architecture overview for contributors and advanced users.
 src/delembic/
 ├── __init__.py          # public API: DataMigration, __version__
 ├── migration.py         # DataMigration ABC
-├── registry.py          # dynamic class loader
+├── registry.py          # dynamic class loader (adds project root to sys.path)
 ├── dag.py               # topological sort (Kahn's algorithm)
 ├── db.py                # SQLAlchemy table definitions, record_result
 ├── executor.py          # run_upgrade, dual-connection architecture
-├── config.py            # Config, find_config
+├── config.py            # Config, find_config, env.py loader
 ├── alembic_compat.py    # Alembic integration (lazy imports)
-└── cli.py               # Click commands
+├── cli.py               # Click commands
+└── templates/
+    ├── migration.mako       # generated migration file template
+    ├── delembic.ini.mako    # generated delembic.ini template
+    └── env.py.mako          # generated env.py template
 ```
 
 ## Execution Model
@@ -97,6 +101,29 @@ def topological_sort(migrations: dict[str, Type[DataMigration]]) -> list[str]:
 `find_config()` walks up from `Path.cwd()` looking for `delembic.ini`. This means you can run `delembic` commands from any subdirectory.
 
 `alembic_config` is resolved as an absolute path relative to `delembic.ini`'s directory — not relative to cwd.
+
+### Database URL Resolution
+
+`Config.engine()` resolves the database connection in order:
+
+1. `sqlalchemy.url` set in `delembic.ini` → `create_engine(url)`
+2. Not set → load `<script_location>/env.py` via `importlib`, call `get_engine()`
+3. Neither → `RuntimeError`
+
+`env.py` is loaded fresh on each `engine()` call using `importlib.util.spec_from_file_location` — same mechanism as `registry.py`. The module is not cached.
+
+## Mako Templates
+
+`cli.py` renders generated files from `src/delembic/templates/` using Mako:
+
+```python
+_TEMPLATES_DIR = Path(__file__).parent / "templates"
+
+def _render(name, **kwargs):
+    return Template(filename=str(_TEMPLATES_DIR / name)).render(**kwargs)
+```
+
+Templates use `${variable}` substitution. To customize generated migration files, edit `migration.mako` after installing in editable mode (`pip install -e .`).
 
 ## Alembic Compatibility Module
 

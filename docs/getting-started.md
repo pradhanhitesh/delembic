@@ -34,7 +34,7 @@ This creates:
 your-project/
 ├── delembic.ini          ← config file (commit this)
 └── delembic/
-    ├── env.py            ← optional connection helpers
+    ├── env.py            ← set your database URL here
     └── versions/         ← migration files live here
         └── .gitkeep
 ```
@@ -47,13 +47,19 @@ delembic init data-migrations
 
 ### 2. Configure Database URL
 
-Edit `delembic.ini` and set your database URL:
+Edit `delembic/env.py` and set your database URL:
 
-```ini
-[delembic]
-script_location = delembic
-sqlalchemy.url = postgresql+psycopg://user:pass@localhost/mydb
+```python
+# delembic/env.py
+from sqlalchemy import create_engine
+
+DATABASE_URL = "postgresql+psycopg://user:pass@localhost/mydb"
+
+def get_engine():
+    return create_engine(DATABASE_URL)
 ```
+
+Delembic calls `get_engine()` from `env.py` automatically. `sqlalchemy.url` in `delembic.ini` is optional — it takes precedence if set, but `env.py` is the recommended approach when using Alembic alongside Delembic (one source of truth).
 
 ### 3. Create Your First Migration
 
@@ -68,14 +74,16 @@ A new file appears in `delembic/versions/`:
 
 from delembic import DataMigration
 
-
 class LoadVocabulary(DataMigration):
-
     revision = "D001"
     depends_on = []
     description = "load vocabulary"
 
     def upgrade(self, conn):
+        # conn is a SQLAlchemy Connection — use it to run SQL or pass to your loaders
+        # Example:
+        #   from sqlalchemy import text
+        #   conn.execute(text("INSERT INTO my_table SELECT * FROM staging.my_table"))
         pass
 
     def validate(self, conn):
