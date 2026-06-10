@@ -59,10 +59,10 @@ def test_revision_generates_file(project, runner):
     with runner.isolated_filesystem(temp_dir=project):
         result = runner.invoke(cli, ["revision", "-m", "load vocabulary"])
     assert result.exit_code == 0
-    versions = list((project / "delembic" / "versions").glob("D001_*.py"))
+    versions = list((project / "delembic" / "versions").glob("*.py"))
     assert len(versions) == 1
     content = versions[0].read_text()
-    assert 'revision = "D001"' in content
+    assert re.search(r'revision = "[0-9a-f]{12}"', content)
     assert 'description = "load vocabulary"' in content
 
 
@@ -70,15 +70,21 @@ def test_revision_increments_id(project, runner):
     with runner.isolated_filesystem(temp_dir=project):
         runner.invoke(cli, ["revision", "-m", "first"])
         runner.invoke(cli, ["revision", "-m", "second"])
-    versions = sorted((project / "delembic" / "versions").glob("D*.py"))
-    assert versions[0].name.startswith("D001")
-    assert versions[1].name.startswith("D002")
+    versions = sorted((project / "delembic" / "versions").glob("*.py"))
+    assert len(versions) == 2
+    # each file embeds a unique 12-char hex revision ID
+    revision_ids = set()
+    for v in versions:
+        m = re.search(r'revision = "([0-9a-f]{12})"', v.read_text())
+        assert m, f"no revision ID found in {v.name}"
+        revision_ids.add(m.group(1))
+    assert len(revision_ids) == 2
 
 
 def test_revision_class_name_from_message(project, runner):
     with runner.isolated_filesystem(temp_dir=project):
         runner.invoke(cli, ["revision", "-m", "load person table"])
-    versions = list((project / "delembic" / "versions").glob("D001_*.py"))
+    versions = list((project / "delembic" / "versions").glob("*.py"))
     content = versions[0].read_text()
     assert "class LoadPersonTable" in content
 
@@ -95,7 +101,7 @@ def test_revision_captures_alembic_heads(project, runner):
         with runner.isolated_filesystem(temp_dir=project):
             result = runner.invoke(cli, ["revision", "-m", "load vocab"])
     assert result.exit_code == 0, result.output
-    versions = list((project / "delembic" / "versions").glob("D001_*.py"))
+    versions = list((project / "delembic" / "versions").glob("*.py"))
     assert versions, "revision file not created"
     content = versions[0].read_text()
     assert "abc123def456" in content
@@ -105,7 +111,7 @@ def test_revision_captures_alembic_heads(project, runner):
 def test_revision_no_alembic_config_empty_depends_on(project, runner):
     with runner.isolated_filesystem(temp_dir=project):
         runner.invoke(cli, ["revision", "-m", "load vocab"])
-    versions = list((project / "delembic" / "versions").glob("D001_*.py"))
+    versions = list((project / "delembic" / "versions").glob("*.py"))
     content = versions[0].read_text()
     assert "depends_on = []" in content
 

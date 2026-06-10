@@ -1,0 +1,8 @@
+steps:
+  - name: "Apply schema migrations"
+    type: alembic
+    target: head
+
+  - name: "Apply data migrations"
+    type: delembic
+    target: head

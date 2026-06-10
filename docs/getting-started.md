@@ -70,12 +70,12 @@ delembic revision -m "load vocabulary"
 A new file appears in `delembic/versions/`:
 
 ```python
-# delembic/versions/D001_load_vocabulary.py
+# delembic/versions/2026_06_10_151205_3a9f1c2e8b4d_load_vocabulary.py
 
 from delembic import DataMigration
 
 class LoadVocabulary(DataMigration):
-    revision = "D001"
+    revision = "3a9f1c2e8b4d"
     depends_on = []
     description = "load vocabulary"
 
@@ -89,6 +89,8 @@ class LoadVocabulary(DataMigration):
     def validate(self, conn):
         pass
 ```
+
+Revision IDs are 12-character hex strings (e.g. `3a9f1c2e8b4d`), matching Alembic's convention. Filenames follow the `YYYY_MM_DD_HHmmss_<revision>_<slug>.py` format.
 
 ### 4. Write the Migration
 
@@ -114,7 +116,7 @@ delembic upgrade head
 Output:
 
 ```
-Running D001: load vocabulary
+Running 3a9f1c2e8b4d: load vocabulary
   OK (1.24s)
 ```
 
@@ -122,11 +124,26 @@ Running D001: load vocabulary
 
 ```bash
 delembic current
-# D001  (applied 2024-01-15 10:30:00+00:00)
+# 3a9f1c2e8b4d  (applied 2026-06-10 15:12:05+00:00)
 
 delembic history
-# applied   D001  load vocabulary
+# applied   3a9f1c2e8b4d  load vocabulary
 ```
+
+### 7. Orchestrate with a Pipeline (optional)
+
+When using Alembic and Delembic together, use the pipeline to run schema and data migrations in the correct interleaved order:
+
+```bash
+# Auto-generate from your dependency graph and run immediately
+delembic pipeline run --auto
+
+# Or generate pipeline.yaml first, review, then run
+delembic pipeline generate
+delembic pipeline run
+```
+
+See [Pipeline Orchestration](pipeline.md) for full details.
 
 ## What Happens Under the Hood
 

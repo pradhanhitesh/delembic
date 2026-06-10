@@ -75,7 +75,7 @@ Current status per revision. One row per revision, replaced on retry.
 
 | Column | Type | Description |
 |---|---|---|
-| `revision` | TEXT | Revision ID (e.g. `D001`) |
+| `revision` | TEXT | Revision ID (e.g. `3a9f1c2e8b4d`) |
 | `status` | TEXT | `success` or `failed` |
 | `applied_at` | DATETIME | When this run started |
 | `duration_seconds` | FLOAT | How long the migration took |

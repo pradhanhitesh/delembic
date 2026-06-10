@@ -134,6 +134,86 @@ def current() -> None:
         click.echo("No migrations applied yet.")
 
 
+@cli.group()
+def pipeline() -> None:
+    """Manage and run orchestration pipelines."""
+
+
+@pipeline.command("init")
+@click.option("--file", "filename", default="pipeline.yaml", show_default=True, help="Output filename.")
+def pipeline_init(filename: str) -> None:
+    """Create a starter pipeline.yaml in the current directory."""
+    dest = Path.cwd() / filename
+    if dest.exists():
+        raise click.ClickException(f"{filename} already exists.")
+    template = _TEMPLATES_DIR / "pipeline.yaml"
+    dest.write_text(template.read_text())
+    click.echo(f"Created {dest}")
+    click.echo("Edit the file to add/reorder steps, then run: delembic pipeline run")
+
+
+@pipeline.command("generate")
+@click.option("--output", default="pipeline.yaml", show_default=True, help="File to write.")
+@click.option("--print", "print_only", is_flag=True, default=False, help="Print to stdout instead of writing a file.")
+def pipeline_generate(output: str, print_only: bool) -> None:
+    """Auto-generate pipeline.yaml from alembic + delembic dependency graphs."""
+    from delembic.pipeline_gen import generate_pipeline, pipeline_to_yaml
+
+    cfg = find_config()
+    try:
+        pl = generate_pipeline(cfg)
+    except RuntimeError as e:
+        raise click.ClickException(str(e))
+
+    yaml_text = pipeline_to_yaml(pl)
+
+    if print_only:
+        click.echo(yaml_text)
+        return
+
+    dest = Path.cwd() / output
+    if dest.exists():
+        click.confirm(f"{output} already exists. Overwrite?", abort=True)
+    dest.write_text(yaml_text)
+    click.echo(f"Generated {dest}  ({len(pl.steps)} steps)")
+    click.echo("Review and edit if needed, then run: delembic pipeline run")
+
+
+@pipeline.command("run")
+@click.option("--file", "filename", default="pipeline.yaml", show_default=True, help="Pipeline YAML to execute.")
+@click.option("--auto", is_flag=True, default=False, help="Auto-generate pipeline from dependency graph instead of reading a file.")
+def pipeline_run(filename: str, auto: bool) -> None:
+    """Execute the pipeline (from FILE or auto-generated with --auto)."""
+    from delembic.pipeline import run_pipeline
+
+    cfg = find_config()
+
+    if auto:
+        from delembic.pipeline_gen import generate_pipeline
+        try:
+            pl = generate_pipeline(cfg)
+        except RuntimeError as e:
+            raise click.ClickException(str(e))
+        click.echo(f"Auto-generated pipeline  ({len(pl.steps)} steps)")
+    else:
+        from delembic.pipeline import Pipeline
+        path = Path.cwd() / filename
+        if not path.exists():
+            raise click.ClickException(
+                f"{filename} not found. Use --auto or run 'delembic pipeline generate' first."
+            )
+        try:
+            pl = Pipeline.from_file(path)
+        except (ValueError, Exception) as e:
+            raise click.ClickException(str(e))
+        click.echo(f"Running pipeline: {filename}  ({len(pl.steps)} steps)")
+
+    try:
+        run_pipeline(pl, cfg)
+    except Exception as e:
+        raise click.ClickException(str(e))
+
+
 @cli.command()
 def history() -> None:
     """List all migrations and their status."""
