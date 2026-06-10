@@ -1,18 +1,24 @@
 # Changelog
 
-## 0.4.2
+## 0.6.0
 
-- **Pipeline auto-generation** — `delembic pipeline generate` reads the Alembic revision chain and each Delembic migration's `depends_on` to emit an interleaved `pipeline.yaml` automatically
-- **`delembic pipeline run --auto`** — generate and execute the pipeline in one step without writing a file
-- `--print` flag on `pipeline generate` to preview without writing
+- **`delembic serve`** — localhost web UI for visualizing migration history
+  - Overview tab: side-by-side Schema (Alembic) and Data (Delembic) panels
+  - Schema tab: full Alembic revision chain with applied/pending status
+  - Data tab: Delembic migrations with status, duration, user@host, and collapsible error tracebacks
+  - Stats bar: applied/failed/pending counts; DB URL shown with password masked
+  - Refresh button: fetches live data without a full page reload
+  - Also runnable as `python -m delembic.server [--port PORT] [--no-browser]`
 
-## 0.4.1
+## 0.5.0
 
 - **Pipeline orchestration** — new `delembic pipeline` command group
   - `pipeline init` — create a starter `pipeline.yaml`
   - `pipeline run [--file]` — execute steps in sequence, stop on failure
-- `pyyaml` added as a runtime dependency
+  - `pipeline generate [--output] [--print]` — auto-generate an interleaved pipeline by reading the Alembic revision chain and each Delembic migration's `depends_on`
+  - `pipeline run --auto` — generate and execute in one step, no YAML file needed
 - Alembic pipeline steps use the programmatic API (no subprocess)
+- `pyyaml` added as a runtime dependency
 
 ## 0.4.0
 

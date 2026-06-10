@@ -134,6 +134,17 @@ def current() -> None:
         click.echo("No migrations applied yet.")
 
 
+@cli.command()
+@click.option("--port", default=8800, show_default=True, help="Port to listen on.")
+@click.option("--no-browser", is_flag=True, default=False, help="Don't open browser automatically.")
+def serve(port: int, no_browser: bool) -> None:
+    """Start a localhost UI to visualize migration history."""
+    from delembic.server import serve as _serve
+
+    cfg = find_config()
+    _serve(cfg, port=port, open_browser=not no_browser)
+
+
 @cli.group()
 def pipeline() -> None:
     """Manage and run orchestration pipelines."""

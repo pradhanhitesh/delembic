@@ -162,6 +162,49 @@ failed    4b5c6d7e8f9a  load observation
 
 ---
 
+## `delembic serve`
+
+Start a localhost web UI to visualize Alembic and Delembic migration history.
+
+```bash
+delembic serve [OPTIONS]
+```
+
+**Options**
+
+`--port INTEGER`
+: Port to listen on. **Default:** `8800`
+
+`--no-browser`
+: Don't open a browser tab automatically.
+
+**Examples**
+
+```bash
+delembic serve                   # opens http://localhost:8800
+delembic serve --port 9000
+delembic serve --no-browser      # start server only
+
+# Also runnable as a module
+python -m delembic.server
+python -m delembic.server --port 9000 --no-browser
+```
+
+**UI features**
+
+- **Overview tab** — side-by-side panels: Schema (Alembic) on the left, Data (Delembic) on the right
+- **Schema tab** — Alembic revision chain with applied/pending status
+- **Data tab** — Delembic migrations with applied/failed/pending status, duration, and user info
+- **Stats bar** — counts of applied/failed/pending for each type; masked DB URL
+- **Refresh button** — fetches fresh data without a full page reload
+- **Error tracebacks** — failed migration rows show a collapsible traceback preview
+
+**Behavior**
+- Reads `delembic.ini` by walking up from the current directory (same as all other commands)
+- Schema tab is populated only if `alembic_config` is set in `delembic.ini`
+- DB password is masked in the stats bar display
+- Press Ctrl+C to stop the server
+
 ---
 
 ## `delembic pipeline`

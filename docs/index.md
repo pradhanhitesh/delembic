@@ -14,6 +14,7 @@ Delembic is designed to work alongside Alembic, not replace it. Schema migration
 - **DAG-based execution** — topological sort ensures correct order regardless of file names
 - **Alembic integration** — verifies schema migrations are applied before data migrations run
 - **Pipeline orchestration** — interleave schema and data migrations in the correct order, auto-generated from dependency graph
+- **Migration history UI** — `delembic serve` opens a localhost dashboard showing applied/pending/failed status for both Alembic and Delembic
 - **Audit trail** — every run recorded; failure records survive transaction rollbacks
 - **Retry-safe** — failed migrations can be re-run; state table reflects latest outcome
 
