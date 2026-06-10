@@ -1,51 +1,20 @@
 import re
-import string
 from pathlib import Path
 
 import click
 import sqlalchemy as sa
+from mako.template import Template
 
 from delembic.config import Config, find_config
 from delembic.db import ensure_tables, get_applied, history_table, version_table
 from delembic.executor import run_upgrade
 from delembic.registry import load_migrations
 
-_INI_TEMPLATE = """\
-[delembic]
-script_location = delembic
-sqlalchemy.url = postgresql+psycopg://user:pass@localhost/mydb
-alembic_config = alembic.ini
-"""
-
-_ENV_TEMPLATE = """\
-from sqlalchemy import create_engine
-
-# Configure your database URL here or load from environment variables
-DATABASE_URL = "postgresql+psycopg://user:pass@localhost/mydb"
+_TEMPLATES_DIR = Path(__file__).parent / "templates"
 
 
-def get_engine():
-    return create_engine(DATABASE_URL)
-"""
-
-_MIGRATION_TEMPLATE = """\
-from delembic import DataMigration
-
-
-class $class_name(DataMigration):
-
-    revision = "$revision"
-
-    depends_on = $depends_on
-
-    description = "$description"
-
-    def upgrade(self, conn):
-        pass
-
-    def validate(self, conn):
-        pass
-"""
+def _render(name: str, **kwargs: object) -> str:
+    return Template(filename=str(_TEMPLATES_DIR / name)).render(**kwargs)
 
 
 @click.group()
@@ -68,17 +37,18 @@ def init(directory: str) -> None:
     if ini_path.exists():
         raise click.ClickException("delembic.ini already exists.")
 
-    ini_content = _INI_TEMPLATE.replace("script_location = delembic", f"script_location = {directory}")
+    ini_content = _render("delembic.ini.mako", script_location=directory)
 
     versions_dir.mkdir(parents=True, exist_ok=True)
     ini_path.write_text(ini_content)
-    (script_dir / "env.py").write_text(_ENV_TEMPLATE)
+    (script_dir / "env.py").write_text(_render("env.py.mako"))
     (versions_dir / ".gitkeep").touch()
 
     click.echo(f"Created {ini_path}")
     click.echo(f"Created {script_dir / 'env.py'}")
     click.echo(f"Created {versions_dir}/")
-    click.echo("\nEdit delembic.ini and set sqlalchemy.url before running migrations.")
+    click.echo("\n[IMPORTANT] Edit delembic/env.py and set DATABASE_URL before running migrations.")
+    click.echo("\n[IMPORTANT] Edit delembic.ini and set alembic_config before running migrations.")
 
 
 @cli.command()
@@ -105,7 +75,8 @@ def revision(message: str) -> None:
     slug = re.sub(r"[^a-z0-9]+", "_", message.lower()).strip("_")
     filename = f"{next_id}_{slug}.py"
     class_name = "".join(word.title() for word in slug.split("_"))
-    content = string.Template(_MIGRATION_TEMPLATE).substitute(
+    content = _render(
+        "migration.mako",
         class_name=class_name,
         revision=next_id,
         description=message,
