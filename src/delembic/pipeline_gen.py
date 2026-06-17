@@ -63,15 +63,12 @@ def generate_pipeline(cfg: Config) -> Pipeline:
             type="alembic",
             target=alembic_rev,
         ))
-        dm_revs = groups[alembic_rev]
-        # Target the last delembic revision in this group (executor runs up to it).
-        last_dm = dm_revs[-1]
-        last_desc = migrations[last_dm].description
-        steps.append(Step(
-            name=f"Data: {last_desc}" if len(dm_revs) == 1 else f"Data migrations ({len(dm_revs)} at {alembic_rev[:7]})",
-            type="delembic",
-            target=last_dm,
-        ))
+        for dm_rev in groups[alembic_rev]:
+            steps.append(Step(
+                name=f"Data: {migrations[dm_rev].description}",
+                type="delembic",
+                target=dm_rev,
+            ))
 
     # Always finish with alembic → head and delembic → head.
     # Handles: remaining schema, no-dep delembic migrations, idempotent reruns.
@@ -90,7 +87,7 @@ def pipeline_to_yaml(pipeline: Pipeline) -> str:
             for s in pipeline.steps
         ]
     }
-    return yaml.dump(data, default_flow_style=False, sort_keys=False)
+    return yaml.dump(data, default_flow_style=False, sort_keys=False, allow_unicode=True)
 
 
 def _get_alembic_chain(alembic_ini: Path) -> list[str]:

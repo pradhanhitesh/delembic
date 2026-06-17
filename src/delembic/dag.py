@@ -35,3 +35,21 @@ def topological_sort(migrations: dict[str, Type[DataMigration]]) -> list[str]:
         raise CycleError("Cycle detected in migration dependency graph")
 
     return order
+
+
+def ancestors_of(migrations: dict[str, Type[DataMigration]], target: str) -> set[str]:
+    """Return target plus all its transitive delembic dependencies (not unrelated peers)."""
+    visited: set[str] = set()
+    stack = [target]
+    while stack:
+        rev = stack.pop()
+        if rev in visited:
+            continue
+        visited.add(rev)
+        cls = migrations.get(rev)
+        if cls is None:
+            continue
+        for dep in cls.depends_on:
+            if dep in migrations:
+                stack.append(dep)
+    return visited

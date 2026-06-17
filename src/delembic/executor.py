@@ -9,7 +9,7 @@ from typing import Type
 import sqlalchemy as sa
 
 from delembic.alembic_compat import AlembicDepsError, check_alembic_deps
-from delembic.dag import topological_sort
+from delembic.dag import ancestors_of, topological_sort
 from delembic.db import ensure_tables, get_applied, record_result
 from delembic.migration import DataMigration
 from delembic.registry import load_migrations
@@ -43,8 +43,8 @@ def run_upgrade(
         if target != "head":
             if target not in order:
                 raise ValueError(f"Unknown target revision: {target}")
-            cutoff = order.index(target)
-            pending = [rev for rev in pending if order.index(rev) <= cutoff]
+            needed = ancestors_of(migrations, target)
+            pending = [rev for rev in pending if rev in needed]
 
         if not pending:
             print("Already up to date.")

@@ -67,7 +67,11 @@ This means:
 
 ## DAG Module
 
-`dag.py` implements Kahn's algorithm:
+`dag.py` implements two graph algorithms:
+
+### `topological_sort`
+
+Kahn's algorithm:
 
 1. Build adjacency list and in-degree map from `depends_on`
 2. External deps (IDs not in the migrations dict) are excluded from the graph — they don't affect sort order, only runtime checks
@@ -86,6 +90,26 @@ def topological_sort(migrations: dict[str, Type[DataMigration]]) -> list[str]:
                 graph[dep].append(rev)
     ...
 ```
+
+### `ancestors_of`
+
+Iterative DFS that returns a target revision plus all its transitive Delembic dependencies:
+
+```python
+def ancestors_of(migrations, target) -> set[str]:
+    visited, stack = set(), [target]
+    while stack:
+        rev = stack.pop()
+        if rev in visited:
+            continue
+        visited.add(rev)
+        for dep in migrations[rev].depends_on:
+            if dep in migrations:   # only follow internal deps
+                stack.append(dep)
+    return visited
+```
+
+Used by `run_upgrade` when a specific target is given. Only migrations in the ancestor set are run — unrelated peer migrations at the same DAG depth are skipped. External deps (Alembic revision IDs) are not followed.
 
 ## Registry Module
 

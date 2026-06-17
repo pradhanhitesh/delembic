@@ -49,6 +49,16 @@ Auto-generated pipeline:
 [6] delembic upgrade head            ← catches any remainder
 ```
 
+If multiple Delembic migrations share the same Alembic checkpoint, each gets its own step:
+
+```
+[1] alembic upgrade abc123def456
+[2] delembic upgrade 3a9f1c2e8b4d   ← load vocab
+[3] delembic upgrade 7f2a0d1c9e3b   ← load synonyms (also depends on abc123)
+[4] alembic upgrade def789abc012
+...
+```
+
 ## Manual Pipeline
 
 For full control, create a `pipeline.yaml` file:
