@@ -6,18 +6,23 @@ import sqlalchemy as sa
 
 
 class Config:
-    def __init__(self, ini_path: Path):
+    def __init__(self, ini_path: Path, section: str = "delembic"):
         self.ini_path = ini_path.resolve()
+        self.section = section
         cp = configparser.RawConfigParser()
         cp.read(self.ini_path)
-        self.script_location = Path(cp.get("delembic", "script_location", fallback="delembic"))
-        self.url = cp.get("delembic", "sqlalchemy.url", fallback="")
+        if not cp.has_section(section) and section != "delembic":
+            raise FileNotFoundError(
+                f"Section [{section}] not found in {self.ini_path}."
+            )
+        self.script_location = Path(cp.get(section, "script_location", fallback="delembic"))
+        self.url = cp.get(section, "sqlalchemy.url", fallback="")
         self.filename_template: str = cp.get(
-            "delembic",
+            section,
             "filename_template",
             fallback="%(year)s_%(month)s_%(day)s_%(hour)s%(minute)s%(second)s_%(revision)s_%(slug)s",
         )
-        _alembic_raw = cp.get("delembic", "alembic_config", fallback="")
+        _alembic_raw = cp.get(section, "alembic_config", fallback="")
         self.alembic_config: Path | None = (
             (self.ini_path.parent / _alembic_raw) if _alembic_raw else None
         )
@@ -53,13 +58,18 @@ class Config:
         return module.get_engine()
 
 
-def find_config() -> Config:
-    """Walk up from cwd looking for delembic.ini."""
+def find_config(ini_path: Path | None = None, section: str = "delembic") -> Config:
+    """Load an explicit ini_path, or walk up from cwd looking for delembic.ini."""
+    if ini_path is not None:
+        if not ini_path.exists():
+            raise FileNotFoundError(f"{ini_path} not found.")
+        return Config(ini_path, section=section)
+
     cwd = Path.cwd()
     for directory in [cwd, *cwd.parents]:
         candidate = directory / "delembic.ini"
         if candidate.exists():
-            return Config(candidate)
+            return Config(candidate, section=section)
     raise FileNotFoundError(
         "delembic.ini not found. Run 'delembic init' first."
     )

@@ -73,12 +73,14 @@ def run_upgrade(
             t0 = time.monotonic()
 
             with engine.connect() as work_conn:
+                work_committed = False
                 try:
                     instance.upgrade(work_conn)
                     instance.validate(work_conn)
                     ended_at = datetime.now(timezone.utc)
                     duration = time.monotonic() - t0
                     work_conn.commit()
+                    work_committed = True
                     record_result(
                         meta_conn, revision, started_at, ended_at, duration,
                         "success", username=username, hostname=hostname,
@@ -90,14 +92,27 @@ def run_upgrade(
                     ended_at = datetime.now(timezone.utc)
                     duration = time.monotonic() - t0
                     tb = traceback.format_exc()
-                    work_conn.rollback()
+                    if not work_committed:
+                        work_conn.rollback()
+                    # meta_conn may be in aborted-transaction state; rollback before reuse
+                    try:
+                        meta_conn.rollback()
+                    except Exception:
+                        pass
+                    # If work committed but recording failed, record as success so the
+                    # migration is not re-run on next invocation.
+                    status = "success" if work_committed else "failed"
                     record_result(
                         meta_conn, revision, started_at, ended_at, duration,
-                        "failed", exception=tb, username=username, hostname=hostname,
+                        status, exception=tb if not work_committed else None,
+                        username=username, hostname=hostname,
                     )
                     meta_conn.commit()
-                    print(f"  FAILED: {e}")
-                    raise SystemExit(1)
+                    if work_committed:
+                        print(f"  OK (applied but recording had a transient error; recorded as success)")
+                    else:
+                        print(f"  FAILED: {e}")
+                        raise SystemExit(1)
 
 
 def _external_deps(

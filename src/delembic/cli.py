@@ -1,3 +1,4 @@
+import configparser
 import re
 import uuid
 from datetime import datetime
@@ -20,33 +21,74 @@ def _render(name: str, **kwargs: object) -> str:
 
 
 @click.group()
-def cli() -> None:
+@click.option(
+    "-c", "--config", "config_path",
+    type=click.Path(path_type=Path), default=None,
+    help="Path to a delembic ini file (default: search upward for delembic.ini).",
+)
+@click.option(
+    "-n", "--name", "section", default="delembic", show_default=True,
+    help="Named config section to use (mirrors alembic's -n).",
+)
+@click.pass_context
+def cli(ctx: click.Context, config_path: Path | None, section: str) -> None:
     """Delembic — data migration framework."""
+    ctx.ensure_object(dict)
+    ctx.obj["config_path"] = config_path
+    ctx.obj["section"] = section
+
+
+def _find_config(ctx: click.Context) -> Config:
+    try:
+        return find_config(ctx.obj["config_path"], ctx.obj["section"])
+    except FileNotFoundError as e:
+        raise click.ClickException(str(e))
 
 
 @cli.command()
 @click.argument("directory", default="delembic")
-def init(directory: str) -> None:
-    """Initialize a new delembic project in the current directory.
+@click.pass_context
+def init(ctx: click.Context, directory: str) -> None:
+    """Initialize a new delembic project, or add a named section to an existing one.
 
     DIRECTORY is the folder name for migration scripts (default: delembic).
+    Use -n/--name to add another section (e.g. bronze/silver/gold) to an
+    existing delembic.ini instead of creating a new file.
     """
+    section = ctx.obj["section"]
     cwd = Path.cwd()
-    ini_path = cwd / "delembic.ini"
+    ini_path = ctx.obj["config_path"] or (cwd / "delembic.ini")
     script_dir = cwd / directory
     versions_dir = script_dir / "versions"
 
     if ini_path.exists():
-        raise click.ClickException("delembic.ini already exists.")
-
-    ini_content = _render("delembic.ini.mako", script_location=directory)
+        cp = configparser.RawConfigParser()
+        cp.read(ini_path)
+        if cp.has_section(section):
+            raise click.ClickException(f"[{section}] already exists in {ini_path}.")
+        cp.add_section(section)
+        cp.set(section, "script_location", directory)
+        cp.set(section, "alembic_config", "alembic.ini")
+        cp.set(
+            section,
+            "filename_template",
+            "%(year)s_%(month)s_%(day)s_%(hour)s%(minute)s%(second)s_%(revision)s_%(slug)s",
+        )
+        with ini_path.open("w") as f:
+            cp.write(f)
+    else:
+        if section != "delembic":
+            raise click.ClickException(
+                f"{ini_path} does not exist yet; run 'delembic init' without -n first."
+            )
+        ini_content = _render("delembic.ini.mako", script_location=directory)
+        ini_path.write_text(ini_content)
 
     versions_dir.mkdir(parents=True, exist_ok=True)
-    ini_path.write_text(ini_content)
     (script_dir / "env.py").write_text(_render("env.py.mako"))
     (versions_dir / ".gitkeep").touch()
 
-    click.echo(f"Created {ini_path}")
+    click.echo(f"Updated {ini_path}  [{section}]")
     click.echo(f"Created {script_dir / 'env.py'}")
     click.echo(f"Created {versions_dir}/")
     click.echo("\n[IMPORTANT] Edit delembic/env.py and set DATABASE_URL before running migrations.")
@@ -55,11 +97,12 @@ def init(directory: str) -> None:
 
 @cli.command()
 @click.option("-m", "--message", required=True, help="Short description of this migration.")
-def revision(message: str) -> None:
+@click.pass_context
+def revision(ctx: click.Context, message: str) -> None:
     """Generate a new migration file."""
     from delembic.alembic_compat import AlembicDepsError, get_current_heads
 
-    cfg = find_config()
+    cfg = _find_config(ctx)
     cfg.versions_dir.mkdir(parents=True, exist_ok=True)
 
     alembic_heads: list[str] = []
@@ -103,17 +146,19 @@ def revision(message: str) -> None:
 
 @cli.command()
 @click.argument("target", default="head")
-def upgrade(target: str) -> None:
+@click.pass_context
+def upgrade(ctx: click.Context, target: str) -> None:
     """Run unapplied migrations up to TARGET (default: head)."""
-    cfg = find_config()
+    cfg = _find_config(ctx)
     engine = cfg.engine()
     run_upgrade(engine, cfg.versions_dir, target, alembic_ini=cfg.alembic_config)
 
 
 @cli.command()
-def current() -> None:
+@click.pass_context
+def current(ctx: click.Context) -> None:
     """Show the most recently applied revision."""
-    cfg = find_config()
+    cfg = _find_config(ctx)
     engine = cfg.engine()
     with engine.connect() as conn:
         try:
@@ -137,11 +182,12 @@ def current() -> None:
 @cli.command()
 @click.option("--port", default=8800, show_default=True, help="Port to listen on.")
 @click.option("--no-browser", is_flag=True, default=False, help="Don't open browser automatically.")
-def serve(port: int, no_browser: bool) -> None:
+@click.pass_context
+def serve(ctx: click.Context, port: int, no_browser: bool) -> None:
     """Start a localhost UI to visualize migration history."""
     from delembic.server import serve as _serve
 
-    cfg = find_config()
+    cfg = _find_config(ctx)
     _serve(cfg, port=port, open_browser=not no_browser)
 
 
@@ -166,11 +212,12 @@ def pipeline_init(filename: str) -> None:
 @pipeline.command("generate")
 @click.option("--output", default="pipeline.yaml", show_default=True, help="File to write.")
 @click.option("--print", "print_only", is_flag=True, default=False, help="Print to stdout instead of writing a file.")
-def pipeline_generate(output: str, print_only: bool) -> None:
+@click.pass_context
+def pipeline_generate(ctx: click.Context, output: str, print_only: bool) -> None:
     """Auto-generate pipeline.yaml from alembic + delembic dependency graphs."""
     from delembic.pipeline_gen import generate_pipeline, pipeline_to_yaml
 
-    cfg = find_config()
+    cfg = _find_config(ctx)
     try:
         pl = generate_pipeline(cfg)
     except RuntimeError as e:
@@ -193,11 +240,12 @@ def pipeline_generate(output: str, print_only: bool) -> None:
 @pipeline.command("run")
 @click.option("--file", "filename", default="pipeline.yaml", show_default=True, help="Pipeline YAML to execute.")
 @click.option("--auto", is_flag=True, default=False, help="Auto-generate pipeline from dependency graph instead of reading a file.")
-def pipeline_run(filename: str, auto: bool) -> None:
+@click.pass_context
+def pipeline_run(ctx: click.Context, filename: str, auto: bool) -> None:
     """Execute the pipeline (from FILE or auto-generated with --auto)."""
     from delembic.pipeline import run_pipeline
 
-    cfg = find_config()
+    cfg = _find_config(ctx)
 
     if auto:
         from delembic.pipeline_gen import generate_pipeline
@@ -226,9 +274,10 @@ def pipeline_run(filename: str, auto: bool) -> None:
 
 
 @cli.command()
-def history() -> None:
+@click.pass_context
+def history(ctx: click.Context) -> None:
     """List all migrations and their status."""
-    cfg = find_config()
+    cfg = _find_config(ctx)
     migrations = load_migrations(cfg.versions_dir)
 
     engine = cfg.engine()

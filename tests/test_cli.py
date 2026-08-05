@@ -158,6 +158,87 @@ def test_history_no_migrations(project, runner):
     assert "No migrations found" in result.output
 
 
+# --- multi-section (-n / -c) ---
+
+def test_init_adds_named_section_to_existing_ini(runner):
+    with runner.isolated_filesystem() as td:
+        result = runner.invoke(cli, ["init", "bronze"])
+        assert result.exit_code == 0, result.output
+        result = runner.invoke(cli, ["-n", "silver", "init", "silver"])
+        assert result.exit_code == 0, result.output
+        ini_text = Path(td, "delembic.ini").read_text()
+        assert "[delembic]" in ini_text
+        assert "[silver]" in ini_text
+        assert "script_location = silver" in ini_text
+        assert Path(td, "silver", "versions").is_dir()
+
+
+def test_init_named_section_already_exists_fails(runner):
+    with runner.isolated_filesystem():
+        runner.invoke(cli, ["init", "bronze"])
+        # default section already present -> plain re-init fails
+        result = runner.invoke(cli, ["init", "bronze2"])
+        assert result.exit_code != 0
+        assert "already exists" in result.output
+        # explicit -n delembic hits the same already-present section
+        result = runner.invoke(cli, ["-n", "delembic", "init", "bronze3"])
+        assert result.exit_code != 0
+        assert "already exists" in result.output
+
+
+def test_init_named_section_without_existing_ini_fails(runner):
+    with runner.isolated_filesystem():
+        result = runner.invoke(cli, ["-n", "silver", "init", "silver"])
+        assert result.exit_code != 0
+        assert "does not exist yet" in result.output
+
+
+def test_name_option_dispatches_to_named_section(runner):
+    with runner.isolated_filesystem() as td:
+        td = Path(td)
+        runner.invoke(cli, ["init", "bronze"])
+        runner.invoke(cli, ["-n", "silver", "init", "silver"])
+        (td / "delembic.ini").write_text(
+            "[delembic]\n"
+            "script_location = bronze\n"
+            "sqlalchemy.url = sqlite:///:memory:\n"
+            "\n"
+            "[silver]\n"
+            "script_location = silver\n"
+            "sqlalchemy.url = sqlite:///:memory:\n"
+        )
+        result = runner.invoke(cli, ["-n", "silver", "revision", "-m", "add col"])
+        assert result.exit_code == 0, result.output
+        assert list((td / "silver" / "versions").glob("*.py"))
+        assert not list((td / "bronze" / "versions").glob("*.py"))
+
+
+def test_unknown_section_fails(runner):
+    with runner.isolated_filesystem():
+        runner.invoke(cli, ["init", "bronze"])
+        result = runner.invoke(cli, ["-n", "gold", "current"])
+        assert result.exit_code != 0
+        assert "gold" in result.output
+
+
+def test_config_option_points_to_alternate_ini(runner, tmp_path):
+    other_dir = tmp_path / "elsewhere"
+    other_dir.mkdir()
+    other_ini = other_dir / "gold.ini"
+    other_ini.write_text(
+        "[delembic]\n"
+        "script_location = gold\n"
+        f"sqlalchemy.url = sqlite:///{other_dir}/gold.db\n"
+    )
+    (other_dir / "gold" / "versions").mkdir(parents=True)
+
+    with runner.isolated_filesystem():
+        # no delembic.ini here at all — must resolve purely via -c
+        result = runner.invoke(cli, ["-c", str(other_ini), "revision", "-m", "add col"])
+        assert result.exit_code == 0, result.output
+        assert list((other_dir / "gold" / "versions").glob("*.py"))
+
+
 def test_history_shows_status(runner):
     # Use file-based SQLite so state persists across CLI invocations
     with runner.isolated_filesystem() as td:
