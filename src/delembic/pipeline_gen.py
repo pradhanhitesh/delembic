@@ -5,7 +5,7 @@ from pathlib import Path
 
 from delembic.config import Config
 from delembic.dag import topological_sort
-from delembic.pipeline import Pipeline, Step
+from delembic.pipeline import Pipeline, Step, _alembic_section
 from delembic.registry import load_migrations
 
 
@@ -20,7 +20,7 @@ def generate_pipeline(cfg: Config) -> Pipeline:
             "Set alembic_config = alembic.ini and try again."
         )
 
-    alembic_chain = _get_alembic_chain(cfg.alembic_config)
+    alembic_chain = _get_alembic_chain(cfg.alembic_config, _alembic_section(cfg))
     alembic_pos = {rev: i for i, rev in enumerate(alembic_chain)}
 
     migrations = load_migrations(cfg.versions_dir, cfg.ini_path.parent)
@@ -90,7 +90,7 @@ def pipeline_to_yaml(pipeline: Pipeline) -> str:
     return yaml.dump(data, default_flow_style=False, sort_keys=False, allow_unicode=True)
 
 
-def _get_alembic_chain(alembic_ini: Path) -> list[str]:
+def _get_alembic_chain(alembic_ini: Path, ini_section: str = "alembic") -> list[str]:
     """Return all alembic revision IDs in order from base to head."""
     try:
         from alembic.config import Config as AlembicConfig
@@ -98,7 +98,7 @@ def _get_alembic_chain(alembic_ini: Path) -> list[str]:
     except ImportError:
         raise RuntimeError("alembic not installed — pip install alembic")
 
-    alembic_cfg = AlembicConfig(str(alembic_ini))
+    alembic_cfg = AlembicConfig(str(alembic_ini), ini_section=ini_section)
     script = ScriptDirectory.from_config(alembic_cfg)
 
     # iterate_revisions walks head → base; reverse for base → head
