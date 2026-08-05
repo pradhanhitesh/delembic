@@ -23,7 +23,7 @@ def generate_pipeline(cfg: Config) -> Pipeline:
     alembic_chain = _get_alembic_chain(cfg.alembic_config)
     alembic_pos = {rev: i for i, rev in enumerate(alembic_chain)}
 
-    migrations = load_migrations(cfg.versions_dir)
+    migrations = load_migrations(cfg.versions_dir, cfg.ini_path.parent)
     if not migrations:
         # No delembic migrations yet — simple single alembic step
         return Pipeline(steps=[Step(name="Schema → head", type="alembic", target="head")])

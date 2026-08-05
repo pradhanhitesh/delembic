@@ -312,7 +312,7 @@ def _collect_delembic(cfg, data: dict, errors: list) -> None:
     )
     from delembic.registry import load_migrations
 
-    migrations = load_migrations(cfg.versions_dir)
+    migrations = load_migrations(cfg.versions_dir, cfg.ini_path.parent)
     order = topological_sort(migrations) if migrations else []
 
     # Per-revision DB record: status, timing

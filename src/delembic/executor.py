@@ -20,8 +20,9 @@ def run_upgrade(
     versions_dir: Path,
     target: str = "head",
     alembic_ini: Path | None = None,
+    project_root: Path | None = None,
 ) -> None:
-    migrations = load_migrations(versions_dir)
+    migrations = load_migrations(versions_dir, project_root)
     if not migrations:
         print("No migrations found.")
         return

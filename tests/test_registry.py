@@ -1,3 +1,5 @@
+import sys
+
 import pytest
 
 from delembic.registry import load_migrations
@@ -61,3 +63,38 @@ def test_migration_is_instantiable(tmp_path):
     migrations = load_migrations(tmp_path)
     instance = migrations["D001"]()
     assert instance.revision == "D001"
+
+
+# --- project_root resolution ---
+# Regression: a naive versions_dir.parent.parent guess breaks once script_location
+# is nested more than one level deep (e.g. "delembic/bronze/versions" under a
+# multi-section layout) — it lands one level short of the real project root.
+
+def test_default_project_root_matches_flat_layout(tmp_path):
+    """script_location/versions -> parent.parent is the project root (unchanged default)."""
+    versions_dir = tmp_path / "delembic" / "versions"
+    versions_dir.mkdir(parents=True)
+    root = str(tmp_path.resolve())
+    try:
+        load_migrations(versions_dir)
+        assert root in sys.path
+    finally:
+        if root in sys.path:
+            sys.path.remove(root)
+
+
+def test_explicit_project_root_used_for_nested_layout(tmp_path):
+    """With script_location nested two levels deep, parent.parent would be wrong —
+    passing project_root explicitly must be what lands on sys.path."""
+    versions_dir = tmp_path / "delembic" / "bronze" / "versions"
+    versions_dir.mkdir(parents=True)
+    root = str(tmp_path.resolve())
+    wrong_root = str(versions_dir.parent.parent.resolve())  # == tmp_path/delembic
+    assert wrong_root != root
+    try:
+        load_migrations(versions_dir, project_root=tmp_path)
+        assert root in sys.path
+        assert wrong_root not in sys.path
+    finally:
+        if root in sys.path:
+            sys.path.remove(root)

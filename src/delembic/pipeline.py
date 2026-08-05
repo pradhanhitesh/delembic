@@ -78,4 +78,7 @@ def _run_delembic_step(step: Step, cfg: Config) -> None:
     from delembic.executor import run_upgrade
 
     engine = cfg.engine()
-    run_upgrade(engine, cfg.versions_dir, step.target, alembic_ini=cfg.alembic_config)
+    run_upgrade(
+        engine, cfg.versions_dir, step.target,
+        alembic_ini=cfg.alembic_config, project_root=cfg.ini_path.parent,
+    )

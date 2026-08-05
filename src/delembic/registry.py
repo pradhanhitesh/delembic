@@ -6,12 +6,16 @@ from typing import Type
 from delembic.migration import DataMigration
 
 
-def load_migrations(versions_dir: Path) -> dict[str, Type[DataMigration]]:
+def load_migrations(
+    versions_dir: Path, project_root: Path | None = None
+) -> dict[str, Type[DataMigration]]:
     migrations: dict[str, Type[DataMigration]] = {}
 
-    project_root = str(versions_dir.parent.parent.resolve())
-    if project_root not in sys.path:
-        sys.path.insert(0, project_root)
+    if project_root is None:
+        project_root = versions_dir.parent.parent
+    root = str(project_root.resolve())
+    if root not in sys.path:
+        sys.path.insert(0, root)
 
     for path in sorted(versions_dir.glob("*.py")):
         if path.name.startswith("_"):

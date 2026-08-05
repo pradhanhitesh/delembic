@@ -151,7 +151,10 @@ def upgrade(ctx: click.Context, target: str) -> None:
     """Run unapplied migrations up to TARGET (default: head)."""
     cfg = _find_config(ctx)
     engine = cfg.engine()
-    run_upgrade(engine, cfg.versions_dir, target, alembic_ini=cfg.alembic_config)
+    run_upgrade(
+        engine, cfg.versions_dir, target,
+        alembic_ini=cfg.alembic_config, project_root=cfg.ini_path.parent,
+    )
 
 
 @cli.command()
@@ -278,7 +281,7 @@ def pipeline_run(ctx: click.Context, filename: str, auto: bool) -> None:
 def history(ctx: click.Context) -> None:
     """List all migrations and their status."""
     cfg = _find_config(ctx)
-    migrations = load_migrations(cfg.versions_dir)
+    migrations = load_migrations(cfg.versions_dir, cfg.ini_path.parent)
 
     engine = cfg.engine()
     with engine.connect() as conn:

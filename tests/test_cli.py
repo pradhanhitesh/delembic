@@ -239,6 +239,38 @@ def test_config_option_points_to_alternate_ini(runner, tmp_path):
         assert list((other_dir / "gold" / "versions").glob("*.py"))
 
 
+def test_history_imports_project_root_with_nested_script_location(runner):
+    """Regression: script_location nested under a shared 'delembic/' folder
+    (e.g. multi-section bronze/silver/gold layout) must still put the real
+    project root — not one level short of it — on sys.path so migration
+    files can import sibling project packages."""
+    with runner.isolated_filesystem() as td:
+        td = Path(td)
+        (td / "mypkg").mkdir()
+        (td / "mypkg" / "__init__.py").write_text("VALUE = 42\n")
+
+        versions_dir = td / "delembic" / "bronze" / "versions"
+        versions_dir.mkdir(parents=True)
+        (td / "delembic.ini").write_text(
+            "[delembic]\n"
+            "script_location = delembic/bronze\n"
+            "sqlalchemy.url = sqlite:///:memory:\n"
+        )
+        (versions_dir / "D001_uses_project_root.py").write_text(
+            "import mypkg\n"
+            "from delembic import DataMigration\n"
+            "class UsesRoot(DataMigration):\n"
+            "    revision = 'D001'\n"
+            "    depends_on = []\n"
+            "    description = 'uses project root, value=' + str(mypkg.VALUE)\n"
+            "    def upgrade(self, conn): pass\n"
+        )
+        result = runner.invoke(cli, ["history"])
+    assert result.exit_code == 0, result.output
+    assert "D001" in result.output
+    assert "value=42" in result.output
+
+
 def test_history_shows_status(runner):
     # Use file-based SQLite so state persists across CLI invocations
     with runner.isolated_filesystem() as td:
