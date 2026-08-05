@@ -7,7 +7,9 @@ class AlembicDepsError(Exception):
     pass
 
 
-def get_alembic_applied_revisions(conn: sa.Connection, alembic_ini: Path) -> set[str]:
+def get_alembic_applied_revisions(
+    conn: sa.Connection, alembic_ini: Path, ini_section: str = "alembic"
+) -> set[str]:
     """
     Walk Alembic script history from current heads back to base.
     Returns all revision IDs that have been applied (i.e. are ancestors of current heads).
@@ -22,7 +24,7 @@ def get_alembic_applied_revisions(conn: sa.Connection, alembic_ini: Path) -> set
             "alembic package not installed. Run: pip install alembic"
         )
 
-    alembic_cfg = AlembicConfig(str(alembic_ini))
+    alembic_cfg = AlembicConfig(str(alembic_ini), ini_section=ini_section)
     script = ScriptDirectory.from_config(alembic_cfg)
     ctx = MigrationContext.configure(conn)
     current_heads = ctx.get_current_heads()
@@ -53,9 +55,10 @@ def check_alembic_deps(
     alembic_ini: Path,
     required: list[str],
     migration_revision: str,
+    ini_section: str = "alembic",
 ) -> None:
     """Raise AlembicDepsError if any required Alembic revision has not been applied."""
-    applied = get_alembic_applied_revisions(conn, alembic_ini)
+    applied = get_alembic_applied_revisions(conn, alembic_ini, ini_section)
     missing = [rev for rev in required if rev not in applied]
     if missing:
         raise AlembicDepsError(

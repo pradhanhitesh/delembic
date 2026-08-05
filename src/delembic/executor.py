@@ -21,6 +21,7 @@ def run_upgrade(
     target: str = "head",
     alembic_ini: Path | None = None,
     project_root: Path | None = None,
+    alembic_section: str = "alembic",
 ) -> None:
     migrations = load_migrations(versions_dir, project_root)
     if not migrations:
@@ -64,7 +65,7 @@ def run_upgrade(
                         f"{alembic_deps} but alembic_config is not set in delembic.ini."
                     )
                 try:
-                    check_alembic_deps(meta_conn, alembic_ini, alembic_deps, revision)
+                    check_alembic_deps(meta_conn, alembic_ini, alembic_deps, revision, alembic_section)
                 except AlembicDepsError as e:
                     print(f"  BLOCKED: {e}")
                     raise SystemExit(1)

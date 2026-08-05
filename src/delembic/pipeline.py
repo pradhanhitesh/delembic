@@ -70,17 +70,8 @@ def _run_alembic_step(step: Step, cfg: Config) -> None:
     except ImportError as e:
         raise RuntimeError("alembic not installed — pip install alembic") from e
 
-    alembic_cfg = AlembicConfig(str(cfg.alembic_config), ini_section=_alembic_section(cfg))
+    alembic_cfg = AlembicConfig(str(cfg.alembic_config), ini_section=cfg.alembic_section)
     alembic_command.upgrade(alembic_cfg, step.target)
-
-
-def _alembic_section(cfg: Config) -> str:
-    """delembic's reserved default section is named "delembic" and doesn't
-    require a matching ini header; alembic's own default is "alembic". Map
-    one onto the other so a plain (un-named) delembic invocation still hits
-    alembic's default section instead of a nonexistent [delembic] one.
-    """
-    return "alembic" if cfg.section == "delembic" else cfg.section
 
 
 def _run_delembic_step(step: Step, cfg: Config) -> None:
@@ -90,4 +81,5 @@ def _run_delembic_step(step: Step, cfg: Config) -> None:
     run_upgrade(
         engine, cfg.versions_dir, step.target,
         alembic_ini=cfg.alembic_config, project_root=cfg.ini_path.parent,
+        alembic_section=cfg.alembic_section,
     )

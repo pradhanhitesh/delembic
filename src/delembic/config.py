@@ -28,6 +28,16 @@ class Config:
         )
 
     @property
+    def alembic_section(self) -> str:
+        """The alembic.ini section matching this delembic section. delembic's
+        reserved default section is named "delembic" (and doesn't require a
+        matching ini header); alembic's own default is "alembic". Map one
+        onto the other so a plain (un-named) delembic invocation still hits
+        alembic's default section instead of a nonexistent [delembic] one.
+        """
+        return "alembic" if self.section == "delembic" else self.section
+
+    @property
     def versions_dir(self) -> Path:
         return self.ini_path.parent / self.script_location / "versions"
 

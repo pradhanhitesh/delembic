@@ -154,6 +154,7 @@ def upgrade(ctx: click.Context, target: str) -> None:
     run_upgrade(
         engine, cfg.versions_dir, target,
         alembic_ini=cfg.alembic_config, project_root=cfg.ini_path.parent,
+        alembic_section=cfg.alembic_section,
     )
 
 

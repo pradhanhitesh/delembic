@@ -5,7 +5,7 @@ from pathlib import Path
 
 from delembic.config import Config
 from delembic.dag import topological_sort
-from delembic.pipeline import Pipeline, Step, _alembic_section
+from delembic.pipeline import Pipeline, Step
 from delembic.registry import load_migrations
 
 
@@ -20,7 +20,7 @@ def generate_pipeline(cfg: Config) -> Pipeline:
             "Set alembic_config = alembic.ini and try again."
         )
 
-    alembic_chain = _get_alembic_chain(cfg.alembic_config, _alembic_section(cfg))
+    alembic_chain = _get_alembic_chain(cfg.alembic_config, cfg.alembic_section)
     alembic_pos = {rev: i for i, rev in enumerate(alembic_chain)}
 
     migrations = load_migrations(cfg.versions_dir, cfg.ini_path.parent)

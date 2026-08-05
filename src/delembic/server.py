@@ -407,7 +407,7 @@ def _collect_alembic(cfg, data: dict, errors: list) -> None:
         return
 
     try:
-        alembic_cfg = AlembicConfig(str(cfg.alembic_config))
+        alembic_cfg = AlembicConfig(str(cfg.alembic_config), ini_section=cfg.alembic_section)
         script = ScriptDirectory.from_config(alembic_cfg)
         heads = script.get_heads()
     except Exception as e:
