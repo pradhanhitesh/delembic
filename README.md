@@ -53,6 +53,19 @@ You can name the script folder anything:
 delembic init data-migrations
 ```
 
+### Multiple Environments
+
+One `delembic.ini` can hold multiple named sections (bronze/silver/gold, dev/prod, etc.), each with its own DB and migration history — mirroring Alembic's `-n <name>`:
+
+```bash
+delembic init bronze
+delembic -n silver init silver
+delembic -n silver upgrade head
+delembic -c other.ini -n gold current   # or point at any ini path with -c
+```
+
+See [docs/configuration.md](docs/configuration.md) for the full `[bronze]`/`[silver]`/`[gold]` example.
+
 ## Writing Migrations
 
 ```python
@@ -111,12 +124,14 @@ Run 'alembic upgrade head' before retrying.
 
 | Command | Description |
 |---|---|
-| `delembic init [DIR]` | Initialize project. DIR defaults to `delembic` |
+| `delembic init [DIR]` | Initialize project, or add a `-n` section to an existing one. DIR defaults to `delembic` |
 | `delembic revision -m "msg"` | Generate new migration file |
 | `delembic upgrade head` | Run all pending migrations |
 | `delembic upgrade D003` | Run migrations up to D003 |
 | `delembic current` | Show last applied revision |
 | `delembic history` | List all migrations with status |
+
+Global options (before the subcommand): `-n/--name SECTION` (default `delembic`), `-c/--config PATH` (default: search upward for `delembic.ini`).
 
 ## Metadata Tables
 

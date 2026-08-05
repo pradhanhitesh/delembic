@@ -6,7 +6,22 @@
 delembic [OPTIONS] COMMAND [ARGS]...
 ```
 
-Delembic walks up from the current directory to find `delembic.ini`. You can run commands from any subdirectory.
+**Options**
+
+`-c, --config PATH`
+: Path to a delembic ini file. **Default:** search upward from the current directory for `delembic.ini`.
+
+`-n, --name TEXT`
+: Named config section to use, mirroring Alembic's `-n`. **Default:** `delembic`
+
+Both options go **before** the subcommand:
+
+```bash
+delembic -n silver upgrade head
+delembic -c pipelines/gold.ini -n gold current
+```
+
+Delembic walks up from the current directory to find `delembic.ini` (unless `-c` is given). You can run commands from any subdirectory. See [Configuration → Multiple Environments](configuration.md) for setting up bronze/silver/gold-style sections.
 
 ---
 
@@ -28,6 +43,7 @@ delembic init [DIRECTORY]
 ```bash
 delembic init                   # creates delembic/
 delembic init data-migrations   # creates data-migrations/
+delembic -n silver init silver  # adds [silver] section to an existing delembic.ini
 ```
 
 **Creates**
@@ -40,8 +56,13 @@ delembic init data-migrations   # creates data-migrations/
 ./delembic/versions/.gitkeep
 ```
 
+**Behavior with `-n/--name`**
+- If `delembic.ini` doesn't exist yet: only the default section (`-n delembic`, i.e. no `-n`) may create it.
+- If `delembic.ini` already exists: `-n <section>` appends a new `[<section>]` block (with its own `script_location`, pointing at `DIRECTORY`) instead of erroring.
+
 **Errors**
-- Exits with error if `delembic.ini` already exists.
+- Exits with error if the target section (`delembic` by default, or whatever `-n` names) already exists in `delembic.ini`.
+- Exits with error if `-n` names a non-default section and no `delembic.ini` exists yet.
 
 ---
 

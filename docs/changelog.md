@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **Multi-section config (`-n`/`--name`)** — one `delembic.ini` can now hold multiple named sections (e.g. `[bronze]`, `[silver]`, `[gold]`), each with its own `script_location` / `sqlalchemy.url` / `alembic_config`, mirroring Alembic's own `-n <name>` flag
+  - `delembic -n <section> <command>` dispatches every command (`init`, `revision`, `upgrade`, `current`, `history`, `serve`, `pipeline ...`) against that section; defaults to `[delembic]` when omitted
+  - `delembic init <dir>` now appends a new named section to an existing `delembic.ini` instead of failing when combined with `-n`; still fails if that section already exists, or if `-n` targets a non-default section before any `delembic.ini` exists
+- **Multi-ini support (`-c`/`--config`)** — point at any ini file path (`delembic -c path/to/other.ini ...`) instead of relying on the upward directory search for `delembic.ini`
+- `Config` and `find_config()` now take an optional `section` (and `find_config` an optional `ini_path`); unknown-section lookups raise a clean `ClickException` instead of an uncaught `FileNotFoundError`
+
 ## 0.6.0
 
 - **`delembic serve`** — localhost web UI for visualizing migration history

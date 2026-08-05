@@ -30,6 +30,48 @@ alembic_config = alembic.ini
 `alembic_config`
 : Path to your `alembic.ini`. Relative to `delembic.ini`. Optional — only needed if you use Alembic integration. When set, `delembic revision` will auto-capture current Alembic heads into `depends_on`.
 
+## Multiple Environments (`-n` / `-c`)
+
+A single `delembic.ini` can hold more than one named section, mirroring Alembic's `-n <name>` — useful for a bronze/silver/gold-style layered warehouse where each layer has its own database and migration history:
+
+```ini
+[delembic]
+script_location = bronze
+sqlalchemy.url = postgresql+psycopg://user:pass@localhost/bronze
+
+[silver]
+script_location = silver
+sqlalchemy.url = postgresql+psycopg://user:pass@localhost/silver
+
+[gold]
+script_location = gold
+sqlalchemy.url = postgresql+psycopg://user:pass@localhost/gold
+```
+
+Set it up with `init`, then add the other sections:
+
+```bash
+delembic init bronze              # creates delembic.ini with [delembic] -> bronze/
+delembic -n silver init silver    # appends [silver] -> silver/
+delembic -n gold init gold        # appends [gold] -> gold/
+```
+
+Every command accepts `-n/--name` to pick the section (default: `delembic`):
+
+```bash
+delembic -n silver revision -m "add column"
+delembic -n silver upgrade head
+delembic -n gold current
+```
+
+Each section gets its own `versions/` directory (`<script_location>/versions/`) and its own `delembic_version` / `delembic_run_history` tables — as long as each section's `sqlalchemy.url` points at a distinct database, histories never collide. If two sections shared one database, their metadata tables would collide; keep one database per section, or don't use the same `sqlalchemy.url` twice.
+
+Use `-c/--config PATH` to point at an ini file anywhere, instead of relying on the upward directory search:
+
+```bash
+delembic -c pipelines/warehouse.ini -n gold upgrade head
+```
+
 ## `env.py` — Database Connection
 
 `delembic init` generates `<script_location>/env.py`. This is the recommended way to configure the database URL, especially when using Alembic alongside Delembic (one source of truth):
