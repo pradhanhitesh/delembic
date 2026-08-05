@@ -2,7 +2,7 @@
 
 Data migration framework for Python — Alembic for ETL and data operations.
 
-Alembic versions schema changes. Delembic versions **data** changes and tracks: vocabulary loads, ETL runs, reference data inserts, corrections. Together they describe the complete database state.
+Alembic versions schema changes. Delembic versions **data** changes and tracks: vocabulary loads, ETL runs, reference data inserts, corrections. Together they describe the complete database states.
 
 ## Installation
 
